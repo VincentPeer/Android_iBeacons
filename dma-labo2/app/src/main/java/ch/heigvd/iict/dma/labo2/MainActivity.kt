@@ -1,18 +1,26 @@
 package ch.heigvd.iict.dma.labo2
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.os.Build
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
 import ch.heigvd.iict.dma.labo2.databinding.ActivityMainBinding
+import ch.heigvd.iict.dma.labo2.models.PersistentBeacon
+import org.altbeacon.beacon.*
+import org.altbeacon.beacon.BeaconManager.getInstanceForApplication
+import org.altbeacon.beacon.service.RangedBeacon
+import java.util.*
 
 
 class MainActivity : AppCompatActivity() {
@@ -23,6 +31,11 @@ class MainActivity : AppCompatActivity() {
 
     private val permissionsGranted = MutableLiveData(false)
 
+    private lateinit var rangingObserver : Observer<Collection<Beacon>>
+
+    private lateinit var beaconManager: BeaconManager
+
+    @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -48,6 +61,7 @@ class MainActivity : AppCompatActivity() {
                 Manifest.permission.ACCESS_COARSE_LOCATION))
         }
 
+
         // init views
         val beaconAdapter = BeaconsAdapter()
         binding.beaconsList.adapter = beaconAdapter
@@ -56,7 +70,7 @@ class MainActivity : AppCompatActivity() {
         // update views
         beaconsViewModel.closestBeacon.observe(this) {beacon ->
             if(beacon != null) {
-                binding.location.text = "TODO"
+                binding.location.text = "Balise : $beacon"
             } else {
                 binding.location.text = getString(R.string.no_beacons)
             }
@@ -73,26 +87,48 @@ class MainActivity : AppCompatActivity() {
             beaconAdapter.items = nearbyBeacons
         }
 
+        // Start ranging
+        beaconManager = getInstanceForApplication(this)
+        beaconManager.beaconParsers.add(
+            BeaconParser()
+                .setBeaconLayout("m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24")
+        )
+
+        // Observer for ranging
+        rangingObserver = Observer { beacons ->
+            Log.d("rangingObserver", "Ranged: ${beacons.count()} beacons")
+            for (beacon: Beacon in beacons) {
+                Log.d("rangingObserver", "$beacon about ${beacon.distance} meters away")
+            }
+            beaconsViewModel.updateBeacons(beacons)
+        }
+
+        val region = Region("all-beacons-region", null, null, null)
+        beaconManager.getRegionViewModel(region).rangedBeacons.observe(this, rangingObserver)
+        beaconManager.startRangingBeacons(region)
     }
+
 
     private val requestBeaconsPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
 
-            val isBLEScanGranted =  if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-                                        permissions.getOrDefault(Manifest.permission.BLUETOOTH_SCAN, false)
-                                    else
-                                        true
-            val isFineLocationGranted = permissions.getOrDefault(Manifest.permission.ACCESS_FINE_LOCATION, false)
-            val isCoarseLocationGranted = permissions.getOrDefault(Manifest.permission.ACCESS_COARSE_LOCATION, false)
+        val isBLEScanGranted =  if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+            permissions.getOrDefault(Manifest.permission.BLUETOOTH_SCAN, false)
+        else
+            true
+        val isFineLocationGranted = permissions.getOrDefault(Manifest.permission.ACCESS_FINE_LOCATION, false)
+        val isCoarseLocationGranted = permissions.getOrDefault(Manifest.permission.ACCESS_COARSE_LOCATION, false)
 
-            if (isBLEScanGranted && (isFineLocationGranted || isCoarseLocationGranted) ) {
-                // Permission is granted. Continue the action
-                permissionsGranted.postValue(true)
-            }
-            else {
-                // Explain to the user that the feature is unavailable
-                Toast.makeText(this, R.string.ibeacon_feature_unavailable, Toast.LENGTH_SHORT).show()
-                permissionsGranted.postValue(false)
-            }
+        if (isBLEScanGranted && (isFineLocationGranted || isCoarseLocationGranted) ) {
+            // Permission is granted. Continue the action
+            permissionsGranted.postValue(true)
         }
+        else {
+            // Explain to the user that the feature is unavailable
+            Toast.makeText(this, R.string.ibeacon_feature_unavailable, Toast.LENGTH_SHORT).show()
+            permissionsGranted.postValue(false)
+        }
+    }
+
+
 
 }
