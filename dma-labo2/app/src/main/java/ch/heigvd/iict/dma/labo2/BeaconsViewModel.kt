@@ -1,3 +1,10 @@
+/**
+ *  * DMA Laboratory 2
+ * @author      : Dimitri De Bleser, Vincent Peer
+ * Date         : 16.04.2023
+ * Description  : Manages the beacons list and the closest beacon liveData
+ */
+
 package ch.heigvd.iict.dma.labo2
 
 import androidx.lifecycle.LiveData
@@ -21,5 +28,8 @@ class BeaconsViewModel : ViewModel() {
 
     private val _closestBeacon = MutableLiveData<PersistentBeacon?>(null)
     val closestBeacon : LiveData<PersistentBeacon?> get() = _closestBeacon
+
+    // public attribute to test the position functionality
+    val placeName = mutableMapOf<Int, String>()
 
 }

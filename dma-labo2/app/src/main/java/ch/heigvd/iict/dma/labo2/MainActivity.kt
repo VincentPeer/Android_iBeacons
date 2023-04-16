@@ -1,7 +1,13 @@
+/**
+ *  * DMA Laboratory 2
+ * @author      : Dimitri De Bleser, Vincent Peer
+ * Date         : 16.04.2023
+ * Description  : Scan for iBeacons, display the closest one and a list of nearby beacons
+ */
+
 package ch.heigvd.iict.dma.labo2
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.os.Build
@@ -16,11 +22,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
 import ch.heigvd.iict.dma.labo2.databinding.ActivityMainBinding
-import ch.heigvd.iict.dma.labo2.models.PersistentBeacon
 import org.altbeacon.beacon.*
 import org.altbeacon.beacon.BeaconManager.getInstanceForApplication
-import org.altbeacon.beacon.service.RangedBeacon
-import java.util.*
 
 
 class MainActivity : AppCompatActivity() {
@@ -35,7 +38,6 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var beaconManager: BeaconManager
 
-    @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -66,15 +68,18 @@ class MainActivity : AppCompatActivity() {
         val beaconAdapter = BeaconsAdapter()
         binding.beaconsList.adapter = beaconAdapter
         binding.beaconsList.layoutManager = LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false)
+        beaconsViewModel.placeName[BEACON1_MINOR] = "Salon"
+        beaconsViewModel.placeName[BEACON2_MINOR] = "Cuisine"
 
         // update views
         beaconsViewModel.closestBeacon.observe(this) {beacon ->
             if(beacon != null) {
-                binding.location.text = "Balise : $beacon"
+                binding.location.text = "${beacon.major} - ${beacon.minor} (${String.format("%.2f", beacon.distance)}m)\n${beaconsViewModel.placeName[beacon.minor]}"
             } else {
                 binding.location.text = getString(R.string.no_beacons)
             }
         }
+
 
         beaconsViewModel.nearbyBeacons.observe(this) { nearbyBeacons ->
             if(nearbyBeacons.isNotEmpty()) {
@@ -102,7 +107,6 @@ class MainActivity : AppCompatActivity() {
             }
             beaconsViewModel.updateBeacons(beacons)
         }
-
         val region = Region("all-beacons-region", null, null, null)
         beaconManager.getRegionViewModel(region).rangedBeacons.observe(this, rangingObserver)
         beaconManager.startRangingBeacons(region)
@@ -129,6 +133,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
+    // Becons minor values
+    companion object {
+        const val BEACON1_MINOR = 55
+        const val BEACON2_MINOR = 96
+    }
 
 }
