@@ -1,4 +1,4 @@
-# DMA_Labo02
+# Laboratoire Android iBeacons
 ## Introduction
 Ce laboratoire vous propose de réaliser une application mobile utilisant des balises Bluetooth Low
 Energy, des iBeacons, pour se positionner en intérieur. Il s’agit de réaliser une application « utilitaire »
